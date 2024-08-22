@@ -366,7 +366,7 @@ class other(RunnerCore):
     create_file('extern-post.js', 'if (!isPthread) await Module();')
     os.mkdir('subdir')
     self.run_process([EMCC, '-o', 'subdir/hello_world.mjs',
-                      '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '-O1',
+                      '-sPROXY_TO_PTHREAD', '-pthread', '-O1',
                       '--extern-post-js', 'extern-post.js',
                       test_file('hello_world.c')] + args)
     src = read_file('subdir/hello_world.mjs')
@@ -2175,7 +2175,6 @@ Module['postRun'] = () => {
       emcc_args=[
         '-pthread', '-Wno-experimental',
         '-sPROXY_TO_PTHREAD',
-        '-sEXIT_RUNTIME',
         '-sMAIN_MODULE=2',
         'side.wasm',
       ])
@@ -2262,7 +2261,6 @@ Module['postRun'] = () => {
       emcc_args=[
         '-pthread', '-Wno-experimental',
         '-sPROXY_TO_PTHREAD',
-        '-sEXIT_RUNTIME',
         '-sMAIN_MODULE=2',
         'libside.wasm',
       ])
@@ -4503,7 +4501,7 @@ addToLibrary({
       printf("done\n");
     }
     ''')
-    self.do_runf('src.c', 'main\ndone\n', emcc_args=['-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD', '--js-library', 'lib.js'])
+    self.do_runf('src.c', 'main\ndone\n', emcc_args=['-pthread', '-sPROXY_TO_PTHREAD', '--js-library', 'lib.js'])
 
   def test_js_lib_method_syntax(self):
     create_file('lib.js', r'''
@@ -5460,7 +5458,7 @@ int main(int argc, char **argv) {
               continue
             print(code, call_exit, async_compile, engine)
             proc = self.run_process(engine + ['a.out.js'], stderr=PIPE, check=False)
-            msg = 'but keepRuntimeAlive() is set (counter=0) due to an async operation, so halting execution but not exiting the runtime'
+            msg = 'but keepRuntimeAlive() is set (counter=0), so halting execution but not exiting the runtime'
             if no_exit and call_exit:
               self.assertContained(msg, proc.stderr)
             else:
@@ -6617,7 +6615,6 @@ int main(void) {
   def test_pthread_print_override_modularize(self):
     self.set_setting('EXPORT_NAME', 'Test')
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('MODULARIZE')
     create_file('main.c', '''
       #include <emscripten/console.h>
@@ -7101,7 +7098,7 @@ int main(int argc, char** argv) {
 
   @parameterized({
     '': ([],),
-    'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+    'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD'],),
   })
   def test_ld_library_path(self, args):
     if args:
@@ -11418,7 +11415,7 @@ int main(void) {
                  ['success'],
                  emcc_args=['-pthread', '-sPROXY_TO_PTHREAD',
                             '-sDEFAULT_PTHREAD_STACK_SIZE=64kb',
-                            '-sSTACK_SIZE=128kb', '-sEXIT_RUNTIME',
+                            '-sSTACK_SIZE=128kb',
                             '--profiling-funcs'])
 
   @parameterized({
@@ -12023,9 +12020,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   @node_pthreads
   def test_proxy_pthread_join_detach(self):
     # Verify that we're unable to detach or join the proxied main thread
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
-    self.do_run_in_out_file_test('other/test_pthread_self_join_detach.c')
+    self.do_run_in_out_file_test('other/test_pthread_self_join_detach.c', emcc_args=['-sPROXY_TO_PTHREAD'])
 
   @node_pthreads
   def test_pthread_asyncify(self):
@@ -12559,7 +12554,7 @@ exec "$@"
     'trusted': [['-sTRUSTED_TYPES']]
   })
   def test_pthread_export_es6(self, args):
-    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'] + args)
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs', '-pthread', '-sPROXY_TO_PTHREAD'] + args)
     create_file('runner.mjs', '''
       import Hello from "./out.mjs";
       Hello();
@@ -13243,7 +13238,6 @@ void foo() {}
   @node_pthreads
   def test_pthread_lsan_no_leak(self):
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-gsource-map', '-pthread']
     self.do_run_in_out_file_test('pthread/test_pthread_lsan_no_leak.cpp', emcc_args=['-fsanitize=leak'])
     self.do_run_in_out_file_test('pthread/test_pthread_lsan_no_leak.cpp', emcc_args=['-fsanitize=address'])
@@ -13251,7 +13245,6 @@ void foo() {}
   @node_pthreads
   def test_pthread_lsan_leak(self):
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.add_pre_run("Module['LSAN_OPTIONS'] = 'exitcode=0'")
     self.emcc_args += ['-gsource-map', '-pthread']
     expected = [
@@ -13279,7 +13272,6 @@ void foo() {}
     # to exit with an error.
     self.emcc_args.append('-pthread')
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.build(test_file('other/test_pthread_js_exception.c'))
     err = self.run_js('test_pthread_js_exception.js', assert_returncode=NON_ZERO)
     self.assertContained('missing is not defined', err)
@@ -13355,7 +13347,7 @@ void foo() {}
 
   @parameterized({
     '': ([],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_emscripten_main_loop(self, args):
     self.do_runf('test_emscripten_main_loop.c', emcc_args=args)
@@ -13374,7 +13366,6 @@ void foo() {}
     # TODO(https://github.com/emscripten-core/emscripten/issues/15161):
     # Make this work without PROXY_TO_PTHREAD
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['--profiling-funcs', '-pthread']
     output = self.do_runf('pthread/test_pthread_trap.c', assert_returncode=NON_ZERO)
     self.assertContained('sent an error!', output)
@@ -13412,7 +13403,6 @@ void foo() {}
   @node_pthreads
   def test_pthread_out_err(self):
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.emcc_args.append('-pthread')
     self.do_other_test('test_pthread_out_err.c')
 
@@ -13420,7 +13410,6 @@ void foo() {}
   def test_pthread_icu(self):
     self.set_setting('USE_ICU')
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.emcc_args.append('-pthread')
     self.do_other_test('test_pthread_icu.cpp')
 
@@ -14236,7 +14225,6 @@ foo/version.txt
   @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer_proxy_to_pthread(self):
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_itimer.c')
 
   @node_pthreads
@@ -14330,7 +14318,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.emcc_args.remove('-pthread')
     self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.do_runf('pthread/test_pthread_create.c')
 
   def test_cpp_module(self):
@@ -14601,7 +14588,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @parameterized({
     '': ([],),
-    'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+    'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD'],),
   })
   def test_preload_module(self, args):
     if args:
