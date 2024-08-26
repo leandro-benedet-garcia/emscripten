@@ -2385,6 +2385,9 @@ addToLibrary({
 #if !ALLOW_TABLE_GROWTH
   'maximum': {{{ INITIAL_TABLE }}},
 #endif
+#if MEMORY64 == 1
+  'index': 'i64',
+#endif
   'element': 'anyfunc'
 });
 `,
