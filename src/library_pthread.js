@@ -36,7 +36,7 @@ var LibraryPThread = {
   $PThread__deps: ['_emscripten_thread_init',
                    '$killThread',
                    '$terminateWorker',
-                   '$cancelThread', '$cleanupThread', '$zeroMemory',
+                   '$cancelThread', '$cleanupThread',
 #if MAIN_MODULE
                    '$markAsFinished',
 #endif
